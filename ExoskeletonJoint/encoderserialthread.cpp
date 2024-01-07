@@ -14,7 +14,7 @@ EncoderSerialThread::EncoderSerialThread()
 //    QTimer *timer = new QTimer(this);
 //    connect(timer,&QTimer::timeout,this,&EncoderSerialThread::sendData);
 //    timer->start(20);//ms
-//    connect(serialPort,&QSerialPort::readyRead,this,&EncoderSerialThread::readData);
+    connect(serialPort,&QSerialPort::readyRead,this,&EncoderSerialThread::readData);
 }
 
 EncoderSerialThread::~EncoderSerialThread()

@@ -55,8 +55,9 @@ public:
     int16_t GetKpos(float kp);
     int16_t GetKspd(float kw);
     //CRC16-CCITT校验
-    uint16_t CRC16CCITT(const QByteArray &data);
+    uint16_t CRC16CCITT(const QByteArray &data, int len);
 
+    void sendData();
     void readData();
 
 

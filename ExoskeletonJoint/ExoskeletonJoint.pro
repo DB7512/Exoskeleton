@@ -14,12 +14,18 @@ SOURCES += \
     main.cpp \
     motorserialthread.cpp \
     robotcontrol.cpp \
+    serialportmanager.cpp \
+    serialportreceivethread.cpp \
+    serialportsendthread.cpp \
     widget.cpp
 
 HEADERS += \
     encoderserialthread.h \
     motorserialthread.h \
     robotcontrol.h \
+    serialportmanager.h \
+    serialportreceivethread.h \
+    serialportsendthread.h \
     widget.h
 
 FORMS += \

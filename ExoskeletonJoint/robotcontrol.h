@@ -19,6 +19,7 @@ private:
     bool m_motorStatus;//电机状态标志
     bool m_encoderStatus;//编码器状态标志
     bool m_torqueStatus;//扭矩传感器标志
+    bool m_serialPortStatus;//串口状态标志
 
 public slots:
     void startThreadSlot();
