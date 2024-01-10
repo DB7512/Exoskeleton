@@ -4,8 +4,7 @@
 #include <QObject>
 #include <QTime>
 #include <QTimer>
-#include "motorserialthread.h"
-#include "encoderserialthread.h"
+#include <QThread>
 #include "serialportencoder.h"
 #include "serialportmotor.h"
 
@@ -14,8 +13,6 @@ class RobotControl : public QObject
     Q_OBJECT
 public:
     explicit RobotControl(QObject *parent = nullptr);
-    MotorSerialThread *motorSerial;
-    EncoderSerialThread *encoderSerial;
 
 
 signals:

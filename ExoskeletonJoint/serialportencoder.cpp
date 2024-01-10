@@ -111,9 +111,9 @@ void SerialPortEncoder::parseEncoderData(QByteArray &data)
         }
         counterValue >>= 1;
         counterValue &= 0xFFFF;
-        qDebug()<<positionData;
-        qDebug()<<"counterValue"<<counterValue;
-        qDebug()<<"positionValue"<<positionValue;
+        // qDebug()<<positionData;
+        // qDebug()<<"counterValue"<<counterValue;
+        // qDebug()<<"positionValue"<<positionValue;
     } else {
         if(error == 0) {
             qDebug("Encoder error!!!");

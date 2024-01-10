@@ -40,14 +40,14 @@ void SerialPortMotor::InitMotorPort()
         m_serialMotorStatus = true;
         qDebug("MotorSerialport opened successfully!");
         QByteArray data;
-        SendAgreementContent(data, 0, 0, GetTuaSet(0.0), GetOmegaSet(6.28*6.33), GetThetaSet(0), GetKpos(0), GetKspd(0.05));
+        SendAgreementContent(data, 0, 0, GetTuaSet(0.0), GetOmegaSet(-6.28*6.33), GetThetaSet(0), GetKpos(0), GetKspd(0.05));
     }
 }
 
 void SerialPortMotor::SendDataToMotor()
 {
     QByteArray data;
-    SendAgreementContent(data, 0, 1, GetTuaSet(0.0), GetOmegaSet(6.28*6.33), GetThetaSet(0), GetKpos(0), GetKspd(0.05));
+    SendAgreementContent(data, 0, 0, GetTuaSet(0.0), GetOmegaSet(-6.28*6.33), GetThetaSet(0), GetKpos(0), GetKspd(0.05));
 }
 
 void SerialPortMotor::ReceiveDataFromMotor()
@@ -55,6 +55,7 @@ void SerialPortMotor::ReceiveDataFromMotor()
     QByteArray data = m_serialMotor->readAll();
     // qDebug()<<data;
     qDebug()<<"motordata"<<data.toHex();
+    parseMotorData(data);
     emit sig_sendMotorData();
 }
 
@@ -116,7 +117,7 @@ void SerialPortMotor::SendAgreementContent(QByteArray &serialdata, uint8_t motor
     int8_t lowByteCRC = static_cast<int8_t>(crc & 0xFF);
     serialdata.append(lowByteCRC);
     serialdata.append(highByteCRC);
-    // qDebug()<<"motorsenddata"<<serialdata.toHex();
+    qDebug()<<"motorsenddata"<<serialdata.toHex();
     //发送
     m_serialMotor->write(serialdata);
     m_serialMotor->flush();
@@ -188,5 +189,65 @@ uint16_t SerialPortMotor::CRC16CCITT(const QByteArray &data)
 
 void SerialPortMotor::parseMotorData(QByteArray &data)
 {
+    // 十六进制数据转换成十进制数据时需要注意是否带符号！！！
+    if(!data.isEmpty() && data.size() == 16) {
+        bool ok;
+        qDebug()<<"datasize"<<data.size();
+        /*数据16bytes，小端模式*/
+        //模式信息1byte
+        uint8_t motorMode = data[2];
+        uint8_t motorId = 0;
+        uint8_t motorStatus = 0;
+        motorId |= motorMode & 0x0F;
+        motorStatus |= (motorMode >> 4) & 0x07;
+        /*反馈数据11bytes*/
+        QByteArray motorData;
+        for(int i = 0; i < 11; ++i)
+            motorData.append(data[3 + i]);
+        // qDebug()<<"motordata"<<motorData.toHex()<<"size"<<motorData.size();
+        //实际关节输出转矩2bytes
+        QByteArray motorTua;
+        motorTua.append(motorData[1]);
+        motorTua.append(motorData[0]);
+        QString tuaStr = motorTua.toHex();
+        int16_t tuaValue = tuaStr.toInt(&ok,16);
+        float tua = tuaValue / 256.0;
 
+        //实际关节输出速度2bytes
+        QByteArray motorOmega;
+        motorOmega.append(motorData[3]);
+        motorOmega.append(motorData[2]);
+        QString omegaStr = motorOmega.toHex();
+        int16_t omegaValue = omegaStr.toInt(&ok,16);
+        float omega = omegaValue / 256.0 * 2 * M_PI;
+
+        //实际关节输出位置（多圈累加）4bytes
+        QByteArray motorTheta;
+        motorTheta.append(motorData[7]);
+        motorTheta.append(motorData[6]);
+        motorTheta.append(motorData[5]);
+        motorTheta.append(motorData[4]);
+        QString thetaStr = motorTheta.toHex();
+        int32_t thetaValue = thetaStr.toLong(&ok,16);
+        float theta = thetaValue / 32768.0 * 2 * M_PI;
+
+        //电机温度1byte
+        int8_t temp = static_cast<int8_t>(motorData[8]);
+        //电机错误标识3bits，足端力12bits
+        QByteArray motorInformation;
+        motorInformation.append(motorData[10]);
+        motorInformation.append(motorData[9]);
+        QString informationStr = motorInformation.toHex();
+        uint16_t informationValue = informationStr.toUInt(&ok,16);
+        // 电机错误标识，0：正常，1：过热，2：过流，3：过压，4：编码器故障
+        uint8_t motorError = informationValue & 0x07;
+        // 足端力
+        uint16_t motorForce = (informationValue >> 3) & 0x0FFF;
+
+        qDebug()<<"id"<<motorId<<"status"<<motorStatus<<"tua"<<tua
+                 <<"omega"<<omega<<"theta"<<theta<<"temp"<<temp
+                 <<"error"<<motorError<<"force"<<motorForce;
+    } else {
+        qDebug("Incomplete received data!!!");
+    }
 }
