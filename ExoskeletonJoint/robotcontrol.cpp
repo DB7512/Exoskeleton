@@ -1,5 +1,6 @@
 #include "robotcontrol.h"
-
+#include <QDebug>
+using namespace std;
 RobotControl::RobotControl(QObject *parent)
     : QObject{parent}
 {
@@ -7,21 +8,22 @@ RobotControl::RobotControl(QObject *parent)
     m_motorStatus = false;
     m_encoderStatus = false;
     m_torqueStatus = false;
+
+    m_encoderPort = new SerialPortEncoder;
+    connect(m_encoderPort,&SerialPortEncoder::sig_getPositionData,this,&RobotControl::handleEncoderData);
+    m_motorPort = new SerialPortMotor;
+
 }
 
 void RobotControl::startThreadSlot()
 {
+    qDebug("111");
     while(!m_isStop) {
-        if(!m_motorStatus) {
-            motorSerial = new MotorSerialThread;
-            m_motorStatus = true;
-        }
-        if(!m_encoderStatus) {
-            encoderSerial = new EncoderSerialThread;
-            m_encoderStatus = true;
-        }
-        motorSerial->start();
-        encoderSerial->start();
+        QThread::sleep(2);
     }
+}
 
+void RobotControl::handleEncoderData(uint32_t positionValue)
+{
+    qDebug()<<"positionValue"<<positionValue;
 }

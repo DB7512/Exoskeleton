@@ -1,55 +1,64 @@
-#include "motorserialthread.h"
+#include "serialportmotor.h"
 #include <math.h>
 #include <QDebug>
-#include <QTime>
-#include <QCoreApplication>
-
-MotorSerialThread::MotorSerialThread(QObject *parent)
-    : QThread{parent}
+SerialPortMotor::SerialPortMotor(QObject *parent)
+    : QObject{parent}
 {
-    stopped = false;
-    serialPort = new QSerialPort();
-    InitSerialPort();
-    QByteArray data;
-    SendAgreementContent(data, 0, 0, GetTuaSet(0.0), GetOmegaSet(0.0), GetThetaSet(0), GetKpos(0), GetKspd(0.0));
-    if(serialPort->waitForReadyRead(1)) {
-        readData();
-    }
-    sleep(1000);
+    m_serialMotor = new QSerialPort;
+    InitMotorPort();
+    connect(m_serialMotor,SIGNAL(readyRead()),this,SLOT(ReceiveDataFromMotor()));
+    connect(this,SIGNAL(sig_sendMotorData()),this,SLOT(SendDataToMotor()));
+    // m_motorTimer = new QTimer(this);
+    // connect(m_motorTimer,&QTimer::timeout,this,&SerialPortMotor::SendDataToMotor);
+    // m_motorTimer->start(2);//ms
 }
 
-MotorSerialThread::~MotorSerialThread()
+SerialPortMotor::~SerialPortMotor()
 {
-    if(serialPort->isOpen()) {
-        serialPort->clear();
-        serialPort->close();
+    if(m_serialMotor) {
+        m_serialMotor->close();
+        delete m_serialMotor;
     }
-    delete serialPort;
 }
 
-void MotorSerialThread::InitSerialPort()
+void SerialPortMotor::InitMotorPort()
 {
-    if(serialPort->isOpen()) {
-        serialPort->close();
+    if(m_serialMotor->isOpen()) {
+        m_serialMotor->close();
     }
-    // Set up serial port configurations
-    serialPort->setPortName("/dev/ttyUSB0");
-    serialPort->setBaudRate(4000000);
-    serialPort->setDataBits(QSerialPort::Data8);     //串口数据8bit
-    serialPort->setParity(QSerialPort::NoParity);    //无奇偶校验位
-    serialPort->setStopBits(QSerialPort::OneStop);   //1bit停止位
-    serialPort->setFlowControl(QSerialPort::NoFlowControl);  //无流控制
-    if (!serialPort->open(QIODevice::ReadWrite)) {
-        serialStatus = false;
-        qDebug("Serialport opening failed!");
+    // Setup serial port configurations
+    m_serialMotor->setPortName("/dev/ttyUSB1");
+    m_serialMotor->setBaudRate(4000000);
+    m_serialMotor->setDataBits(QSerialPort::Data8);     //串口数据8bit
+    m_serialMotor->setParity(QSerialPort::NoParity);    //无奇偶校验位
+    m_serialMotor->setStopBits(QSerialPort::OneStop);   //1bit停止位
+    m_serialMotor->setFlowControl(QSerialPort::NoFlowControl);  //无流控制
+    if (!m_serialMotor->open(QIODevice::ReadWrite)) {
+        m_serialMotorStatus = false;
+        qDebug("MotorSerialport opening failed!");
     } else {
-        serialStatus = true;
-        qDebug("Serialport opened successfully!");
+        m_serialMotorStatus = true;
+        qDebug("MotorSerialport opened successfully!");
+        QByteArray data;
+        SendAgreementContent(data, 0, 0, GetTuaSet(0.0), GetOmegaSet(6.28*6.33), GetThetaSet(0), GetKpos(0), GetKspd(0.05));
     }
 }
 
-void MotorSerialThread::SendAgreementContent(QByteArray& serialdata, uint8_t motorid, uint8_t status,
-                                             int16_t tua, int16_t omega, int32_t theta, int16_t kpos, int16_t kspd)
+void SerialPortMotor::SendDataToMotor()
+{
+    QByteArray data;
+    SendAgreementContent(data, 0, 1, GetTuaSet(0.0), GetOmegaSet(6.28*6.33), GetThetaSet(0), GetKpos(0), GetKspd(0.05));
+}
+
+void SerialPortMotor::ReceiveDataFromMotor()
+{
+    QByteArray data = m_serialMotor->readAll();
+    // qDebug()<<data;
+    qDebug()<<"motordata"<<data.toHex();
+    emit sig_sendMotorData();
+}
+
+void SerialPortMotor::SendAgreementContent(QByteArray &serialdata, uint8_t motorid, uint8_t status, int16_t tua, int16_t omega, int32_t theta, int16_t kpos, int16_t kspd)
 {
     if(serialdata.length() > 0) {
         serialdata.clear();
@@ -107,13 +116,12 @@ void MotorSerialThread::SendAgreementContent(QByteArray& serialdata, uint8_t mot
     int8_t lowByteCRC = static_cast<int8_t>(crc & 0xFF);
     serialdata.append(lowByteCRC);
     serialdata.append(highByteCRC);
-    qDebug()<<"motorsenddata"<<serialdata.toHex();
+    // qDebug()<<"motorsenddata"<<serialdata.toHex();
     //发送
-    serialPort->write(serialdata);
-    serialPort->flush();
+    m_serialMotor->write(serialdata);
+    m_serialMotor->flush();
 }
-
-int16_t MotorSerialThread::GetTuaSet(float tua)
+int16_t SerialPortMotor::GetTuaSet(float tua)
 {
     if(fabs(tua) <= 127.99) {
         return (int16_t)(tua * 256);
@@ -122,7 +130,7 @@ int16_t MotorSerialThread::GetTuaSet(float tua)
     }
 }
 
-int16_t MotorSerialThread::GetOmegaSet(float omega)
+int16_t SerialPortMotor::GetOmegaSet(float omega)
 {
     if(fabs(omega) <= 804.0) {
         return static_cast<int16_t>(omega * 256 / 2 / M_PI);
@@ -131,7 +139,7 @@ int16_t MotorSerialThread::GetOmegaSet(float omega)
     }
 }
 
-int32_t MotorSerialThread::GetThetaSet(float theta)
+int32_t SerialPortMotor::GetThetaSet(float theta)
 {
     if(fabs(theta) <= 411774.0) {
         return static_cast<int32_t>(theta * 32768 / 2 / M_PI);
@@ -140,7 +148,7 @@ int32_t MotorSerialThread::GetThetaSet(float theta)
     }
 }
 
-int16_t MotorSerialThread::GetKpos(float kp)
+int16_t SerialPortMotor::GetKpos(float kp)
 {
     if(kp >= 0 && kp <= 25.599) {
         return static_cast<int16_t>(kp * 1280);
@@ -149,7 +157,7 @@ int16_t MotorSerialThread::GetKpos(float kp)
     }
 }
 
-int16_t MotorSerialThread::GetKspd(float kw)
+int16_t SerialPortMotor::GetKspd(float kw)
 {
     if(kw >= 0 && kw <= 25.599) {
         return static_cast<int16_t>(kw * 1280);
@@ -158,7 +166,7 @@ int16_t MotorSerialThread::GetKspd(float kw)
     }
 }
 
-uint16_t MotorSerialThread::CRC16CCITT(const QByteArray &data)
+uint16_t SerialPortMotor::CRC16CCITT(const QByteArray &data)
 {
     // CRC16_CCITT 计算方法
     //初始值
@@ -178,43 +186,7 @@ uint16_t MotorSerialThread::CRC16CCITT(const QByteArray &data)
     return crc;
 }
 
-void MotorSerialThread::readData()
+void SerialPortMotor::parseMotorData(QByteArray &data)
 {
-    QByteArray data = serialPort->readAll();
-    qDebug()<<data;
-    qDebug()<<data.toHex();
-}
 
-void MotorSerialThread::run()
-{
-    QByteArray data;
-    while(!stopped) {
-        if(data.size() > 0)
-            data.clear();
-        if(serialStatus) {
-
-//            SendAgreementContent(data, 0, 1, GetTuaSet(0.0), GetOmegaSet(-2*6.28*6.33), GetThetaSet(0.0), GetKpos(0.0), GetKspd(0.05));
-            SendAgreementContent(data, 0, 1, GetTuaSet(0.0), GetOmegaSet(0.0), GetThetaSet(3.14*6.33), GetKpos(0.05), GetKspd(0.0));
-            if(serialPort->waitForReadyRead(1)) {
-                readData();
-            }
-            sleep(3000);
-            if(data.size() > 0)
-                data.clear();
-            SendAgreementContent(data, 0, 1, GetTuaSet(0.0), GetOmegaSet(0.0), GetThetaSet(-3.14*6.33), GetKpos(0.05), GetKspd(0.0));
-            if(serialPort->waitForReadyRead(1)) {
-                readData();
-            }
-            sleep(3000);
-        } else {
-            stopped = true;
-        }
-    }
-}
-
-void MotorSerialThread::sleep(int msec)
-{
-    QTime dieTime = QTime::currentTime().addMSecs(msec);
-    while( QTime::currentTime() < dieTime )
-        QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
 }
