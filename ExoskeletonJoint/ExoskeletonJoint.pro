@@ -12,12 +12,14 @@ CONFIG += c++17
 SOURCES += \
     main.cpp \
     robotcontrol.cpp \
+    serialportemg.cpp \
     serialportencoder.cpp \
     serialportmotor.cpp \
     widget.cpp
 
 HEADERS += \
     robotcontrol.h \
+    serialportemg.h \
     serialportencoder.h \
     serialportmotor.h \
     widget.h

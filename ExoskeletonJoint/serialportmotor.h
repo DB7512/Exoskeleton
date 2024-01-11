@@ -6,6 +6,36 @@
 #include <QTimer>
 #include <QTime>
 
+typedef enum{
+    LOCK,           //锁定（Default）
+    FOC,            //FOC闭环
+    CALIBRATION,    //编码器校准
+}MOTORSTATUS;       //电机工作模式
+
+struct ControlProtocol{
+    QString head;
+    int motor_id;
+    MOTORSTATUS status;
+    int tau_set;
+    int omega_set;
+    int theta_set;
+    int k_pose;
+    int k_spd;
+    QString crc;
+};//主机控制协议
+
+struct FeedbackData{
+    QString head;
+    int motor_id;
+    MOTORSTATUS status;
+    int tau_fbk;
+    int omega_fbk;
+    int theta_fbk;
+    int8_t temp;
+    int force;
+    QString crc;
+};//电机反馈数据
+
 class SerialPortMotor : public QObject
 {
     Q_OBJECT

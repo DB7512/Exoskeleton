@@ -53,8 +53,7 @@ void SerialPortMotor::SendDataToMotor()
 void SerialPortMotor::ReceiveDataFromMotor()
 {
     QByteArray data = m_serialMotor->readAll();
-    // qDebug()<<data;
-    qDebug()<<"motordata"<<data.toHex();
+    // qDebug()<<"motorreceiveddata"<<data.toHex();
     parseMotorData(data);
     emit sig_sendMotorData();
 }
@@ -117,7 +116,7 @@ void SerialPortMotor::SendAgreementContent(QByteArray &serialdata, uint8_t motor
     int8_t lowByteCRC = static_cast<int8_t>(crc & 0xFF);
     serialdata.append(lowByteCRC);
     serialdata.append(highByteCRC);
-    qDebug()<<"motorsenddata"<<serialdata.toHex();
+    // qDebug()<<"motorsenddata"<<serialdata.toHex();
     //发送
     m_serialMotor->write(serialdata);
     m_serialMotor->flush();
@@ -192,7 +191,7 @@ void SerialPortMotor::parseMotorData(QByteArray &data)
     // 十六进制数据转换成十进制数据时需要注意是否带符号！！！
     if(!data.isEmpty() && data.size() == 16) {
         bool ok;
-        qDebug()<<"datasize"<<data.size();
+        // qDebug()<<"datasize"<<data.size();
         /*数据16bytes，小端模式*/
         //模式信息1byte
         uint8_t motorMode = data[2];

@@ -17,7 +17,8 @@ SerialPortEncoder::SerialPortEncoder(QObject *parent)
 SerialPortEncoder::~SerialPortEncoder()
 {
     if(m_serialEncoder) {
-        m_serialEncoder->close();
+        if(m_serialEncoder->isOpen())
+            m_serialEncoder->close();
         delete m_serialEncoder;
     }
 }

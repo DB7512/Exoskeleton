@@ -12,6 +12,11 @@ RobotControl::RobotControl(QObject *parent)
     m_encoderPort = new SerialPortEncoder;
     connect(m_encoderPort,&SerialPortEncoder::sig_getPositionData,this,&RobotControl::handleEncoderData);
     m_motorPort = new SerialPortMotor;
+    m_EMGPort = new SerialPortEMG;
+}
+
+RobotControl::~RobotControl()
+{
 
 }
 

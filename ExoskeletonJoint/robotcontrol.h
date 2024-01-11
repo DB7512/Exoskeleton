@@ -7,14 +7,14 @@
 #include <QThread>
 #include "serialportencoder.h"
 #include "serialportmotor.h"
+#include "serialportemg.h"
 
 class RobotControl : public QObject
 {
     Q_OBJECT
 public:
     explicit RobotControl(QObject *parent = nullptr);
-
-
+    ~RobotControl();
 signals:
     void sig_startSerial();
     void sig_needData();
@@ -30,6 +30,7 @@ private:
     // 串口
     SerialPortEncoder *m_encoderPort;
     SerialPortMotor *m_motorPort;
+    SerialPortEMG *m_EMGPort;
 
 
 public slots:
