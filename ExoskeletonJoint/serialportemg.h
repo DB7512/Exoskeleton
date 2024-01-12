@@ -21,7 +21,8 @@ public:
     bool m_serialEMGStatus;
     //EMG串口指针
     QSerialPort *m_serialEMG;
-    vector<QString> m_EMGMessage;
+    // 存储六个通道肌电信号的二维容器
+    vector<vector<int> > m_EMGMessage;
 
 signals:
     // //给robotcontrol信号以解析数据
@@ -33,16 +34,18 @@ public slots:
     //接收EMG数据
     void ReceiveEMGData();
 
-
 private:
-    void parseEMGData(QByteArray& data);
+    void parseEMGData(QString& data);
     struct timeval tptime1,tptime2;
     // EMG定时器指针
     QTimer *m_EMGTimer;
     // 线程指针，暂不考虑使用
     QThread *m_thread;
-    //延时函数ms
+    // 延时函数ms
     void sleep(int msec);
+    // 存储串口读取的数据
+    QString m_EMGData;
+
 };
 
 #endif // SERIALPORTEMG_H

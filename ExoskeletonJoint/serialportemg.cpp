@@ -1,11 +1,13 @@
 #include "serialportemg.h"
 #include <QDebug>
+#include <vector>
 SerialPortEMG::SerialPortEMG(QObject *parent)
     : QObject{parent}
 {
     m_serialEMG = new QSerialPort;
     InitEMGPort();
     connect(m_serialEMG,SIGNAL(readyRead()),this,SLOT(ReceiveEMGData()));
+    m_EMGData.clear();
 }
 
 SerialPortEMG::~SerialPortEMG()
@@ -45,5 +47,36 @@ void SerialPortEMG::ReceiveEMGData()
 
     QByteArray data = m_serialEMG->readAll();
     QString dataStr = data;
+    parseEMGData(m_EMGData);
     qDebug()<<"EMGdata"<<dataStr;
+}
+
+void SerialPortEMG::parseEMGData(QString &data)
+{
+    // 未测试
+    m_EMGData.append(data);
+    // data = "111,121,1341,123,1245,12367\r\n1234,13,";
+    vector<int> EMGData(6);
+    QStringList list = m_EMGData.split("\r\n");
+    QString tempStr;
+    if (list.size() > 0) {
+        for(int i = 0; i < list.size(); ++i) {
+            if(i < list.size() - 1) {
+                tempStr = list[i];
+                QStringList listData = tempStr.split(",");
+                for(int j = 0; j < listData.size(); ++j) {
+                    tempStr = listData[j];
+                    EMGData[j] = tempStr.toInt();
+                }
+                m_EMGMessage.push_back(EMGData);
+                // 获得的emg数据暂未处理，后续考虑使用3个寄存器保存数据供处理
+                if (m_EMGMessage.size() > 1000)
+                    m_EMGMessage.clear();
+            } else {
+                m_EMGData.clear();
+                m_EMGData.append(list[i]);
+                break;
+            }
+        }
+    }
 }
