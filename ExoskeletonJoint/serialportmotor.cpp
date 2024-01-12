@@ -6,11 +6,13 @@ SerialPortMotor::SerialPortMotor(QObject *parent)
 {
     m_serialMotor = new QSerialPort;
     InitMotorPort();
-    connect(m_serialMotor,SIGNAL(readyRead()),this,SLOT(ReceiveDataFromMotor()));
     connect(this,SIGNAL(sig_sendMotorData()),this,SLOT(SendDataToMotor()));
+    connect(m_serialMotor,SIGNAL(readyRead()),this,SLOT(ReceiveDataFromMotor()));
     // m_motorTimer = new QTimer(this);
     // connect(m_motorTimer,&QTimer::timeout,this,&SerialPortMotor::SendDataToMotor);
     // m_motorTimer->start(2);//ms
+    m_motorCmd.Id = 0;
+    m_motorCmd.Mode = 1;
 }
 
 SerialPortMotor::~SerialPortMotor()
@@ -46,8 +48,11 @@ void SerialPortMotor::InitMotorPort()
 
 void SerialPortMotor::SendDataToMotor()
 {
+
     QByteArray data;
-    SendAgreementContent(data, 0, 0, GetTuaSet(0.0), GetOmegaSet(-6.28*6.33), GetThetaSet(0), GetKpos(0), GetKspd(0.05));
+    SendAgreementContent(data, m_motorCmd.Id, m_motorCmd.Mode, GetTuaSet(m_motorCmd.T),
+                         GetOmegaSet(m_motorCmd.W), GetThetaSet(m_motorCmd.Pos),
+                         GetKpos(m_motorCmd.K_P), GetKspd(m_motorCmd.K_W));
 }
 
 void SerialPortMotor::ReceiveDataFromMotor()
@@ -55,6 +60,7 @@ void SerialPortMotor::ReceiveDataFromMotor()
     QByteArray data = m_serialMotor->readAll();
     // qDebug()<<"motorreceiveddata"<<data.toHex();
     parseMotorData(data);
+    sleep(1000);
     emit sig_sendMotorData();
 }
 
@@ -199,6 +205,9 @@ void SerialPortMotor::parseMotorData(QByteArray &data)
         uint8_t motorStatus = 0;
         motorId |= motorMode & 0x0F;
         motorStatus |= (motorMode >> 4) & 0x07;
+        m_motorData.Id = motorId;
+        m_motorData.Mode = motorStatus;
+
         /*反馈数据11bytes*/
         QByteArray motorData;
         for(int i = 0; i < 11; ++i)
@@ -211,6 +220,7 @@ void SerialPortMotor::parseMotorData(QByteArray &data)
         QString tuaStr = motorTua.toHex();
         int16_t tuaValue = tuaStr.toInt(&ok,16);
         float tua = tuaValue / 256.0;
+        m_motorData.T = tua;
 
         //实际关节输出速度2bytes
         QByteArray motorOmega;
@@ -219,6 +229,7 @@ void SerialPortMotor::parseMotorData(QByteArray &data)
         QString omegaStr = motorOmega.toHex();
         int16_t omegaValue = omegaStr.toInt(&ok,16);
         float omega = omegaValue / 256.0 * 2 * M_PI;
+        m_motorData.W = omega;
 
         //实际关节输出位置（多圈累加）4bytes
         QByteArray motorTheta;
@@ -229,9 +240,12 @@ void SerialPortMotor::parseMotorData(QByteArray &data)
         QString thetaStr = motorTheta.toHex();
         int32_t thetaValue = thetaStr.toLong(&ok,16);
         float theta = thetaValue / 32768.0 * 2 * M_PI;
+        m_motorData.Pos = theta;
 
         //电机温度1byte
         int8_t temp = static_cast<int8_t>(motorData[8]);
+        m_motorData.Temp = temp;
+
         //电机错误标识3bits，足端力12bits
         QByteArray motorInformation;
         motorInformation.append(motorData[10]);
@@ -240,13 +254,16 @@ void SerialPortMotor::parseMotorData(QByteArray &data)
         uint16_t informationValue = informationStr.toUInt(&ok,16);
         // 电机错误标识，0：正常，1：过热，2：过流，3：过压，4：编码器故障
         uint8_t motorError = informationValue & 0x07;
+        m_motorData.MError = motorError;
+
         // 足端力
         uint16_t motorForce = (informationValue >> 3) & 0x0FFF;
-
-        qDebug()<<"id"<<motorId<<"status"<<motorStatus<<"tua"<<tua
-                 <<"omega"<<omega<<"theta"<<theta<<"temp"<<temp
-                 <<"error"<<motorError<<"force"<<motorForce;
+        m_motorData.Force = motorForce;
+        // qDebug()<<"id"<<motorId<<"status"<<motorStatus<<"tua"<<tua
+        //          <<"omega"<<omega<<"theta"<<theta<<"temp"<<temp
+        //          <<"error"<<motorError<<"force"<<motorForce;
+        qDebug()<<"pose"<<m_motorData.Pos<<"omega"<<m_motorData.W;
     } else {
-        qDebug("Incomplete received data!!!");
+        qDebug("The data received is incomplete!!!");
     }
 }

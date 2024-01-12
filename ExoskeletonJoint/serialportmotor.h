@@ -10,30 +10,29 @@ typedef enum{
     LOCK,           //锁定（Default）
     FOC,            //FOC闭环
     CALIBRATION,    //编码器校准
-}MOTORSTATUS;       //电机工作模式
+}MOTORMODE;       //电机工作模式
 
-struct ControlProtocol{
-    QString head;
-    int motor_id;
-    MOTORSTATUS status;
-    int tau_set;
-    int omega_set;
-    int theta_set;
-    int k_pose;
-    int k_spd;
-    QString crc;
+struct MotorCmd{
+    uint8_t Id;
+    uint8_t Mode;
+    float T;
+    float W;
+    float Pos;
+    float K_P;
+    float K_W;
+    // QString crc;
 };//主机控制协议
 
-struct FeedbackData{
-    QString head;
-    int motor_id;
-    MOTORSTATUS status;
-    int tau_fbk;
-    int omega_fbk;
-    int theta_fbk;
-    int8_t temp;
-    int force;
-    QString crc;
+struct MotorData{
+    uint8_t Id;
+    uint8_t Mode;
+    float T;
+    float W;
+    float Pos;
+    int8_t Temp;
+    uint8_t MError;
+    uint16_t Force;
+    // QString crc;
 };//电机反馈数据
 
 class SerialPortMotor : public QObject
@@ -48,6 +47,9 @@ public:
     bool m_serialMotorStatus;
     //电机串口指针
     QSerialPort *m_serialMotor;
+    MotorCmd m_motorCmd;
+    MotorData m_motorData;
+
 signals:
     void sig_sendMotorData();
 
