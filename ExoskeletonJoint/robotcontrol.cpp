@@ -1,5 +1,7 @@
 #include "robotcontrol.h"
 #include <QDebug>
+#include <QCoreApplication>
+
 using namespace std;
 RobotControl::RobotControl(QObject *parent)
     : QObject{parent}
@@ -20,24 +22,18 @@ RobotControl::~RobotControl()
 
 }
 
+void RobotControl::sleep(int msec)
+{
+    QTime dieTime = QTime::currentTime().addMSecs(msec);
+    while( QTime::currentTime() < dieTime )
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+}
+
 void RobotControl::startThreadSlot()
 {
     qDebug("111");
     while(!m_isStop) {
-        QString data = "111,121,1341,123,1245,12367\r\n1234,13,";
-        vector<int> EMGData(6);
-        QStringList list = data.split("\r\n");
-        QString tempStr;
-        if (list.size() > 0) {
-            for(int i = 0; i < list.size() - 1; ++i) {
-                tempStr = list[i];
-                QStringList listData = tempStr.split(",");
-                for(int j = 0; j < listData.size(); ++j) {
-                    tempStr = listData[j];
-                    EMGData[j] = tempStr.toInt();
-                }
-            }
-        }
+        sleep(1000);
     }
 }
 

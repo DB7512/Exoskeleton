@@ -1,6 +1,8 @@
 #include "serialportmotor.h"
 #include <math.h>
 #include <QDebug>
+#include <QCoreApplication>
+
 SerialPortMotor::SerialPortMotor(QObject *parent)
     : QObject{parent}
 {
@@ -11,8 +13,15 @@ SerialPortMotor::SerialPortMotor(QObject *parent)
     // m_motorTimer = new QTimer(this);
     // connect(m_motorTimer,&QTimer::timeout,this,&SerialPortMotor::SendDataToMotor);
     // m_motorTimer->start(2);//ms
+    numi = 0;
+    numj = 0;
     m_motorCmd.Id = 0;
     m_motorCmd.Mode = 1;
+    m_motorCmd.T = 0.0;
+    m_motorCmd.W = 0.0/*6.28*6.33*/;
+    m_motorCmd.Pos = /*0.0*/3.14*6.33;
+    m_motorCmd.K_P = 0.001;
+    m_motorCmd.K_W = 0.0;
 }
 
 SerialPortMotor::~SerialPortMotor()
@@ -42,17 +51,33 @@ void SerialPortMotor::InitMotorPort()
         m_serialMotorStatus = true;
         qDebug("MotorSerialport opened successfully!");
         QByteArray data;
-        SendAgreementContent(data, 0, 0, GetTuaSet(0.0), GetOmegaSet(-6.28*6.33), GetThetaSet(0), GetKpos(0), GetKspd(0.05));
+        SendAgreementContent(data, 0, 0, GetTuaSet(0.0), GetOmegaSet(0.0), GetThetaSet(0.0), GetKpos(0.0), GetKspd(0.0));
     }
 }
 
 void SerialPortMotor::SendDataToMotor()
 {
-
-    QByteArray data;
-    SendAgreementContent(data, m_motorCmd.Id, m_motorCmd.Mode, GetTuaSet(m_motorCmd.T),
-                         GetOmegaSet(m_motorCmd.W), GetThetaSet(m_motorCmd.Pos),
-                         GetKpos(m_motorCmd.K_P), GetKspd(m_motorCmd.K_W));
+    // m_motorCmd.Id = 0;
+    // m_motorCmd.Mode = 1;
+    // m_motorCmd.T = 0.0;
+    // m_motorCmd.W = 0.0/*6.28*6.33*/;
+    // m_motorCmd.Pos = /*0.0*/3.14*6.33;
+    // m_motorCmd.K_P = 0.02;
+    // m_motorCmd.K_W = 0.01;
+    if(numj < 500) {
+        m_motorCmd.K_W += 0.001;
+        numj++;
+    } else {
+        m_motorCmd.K_P += 0.001;
+        numj = 0.0;
+        numi++;
+    }
+    if(numi<500) {
+        QByteArray data;
+        SendAgreementContent(data, m_motorCmd.Id, m_motorCmd.Mode, GetTuaSet(m_motorCmd.T),
+                             GetOmegaSet(m_motorCmd.W), GetThetaSet(m_motorCmd.Pos),
+                             GetKpos(m_motorCmd.K_P), GetKspd(m_motorCmd.K_W));
+    }
 }
 
 void SerialPortMotor::ReceiveDataFromMotor()
@@ -60,7 +85,7 @@ void SerialPortMotor::ReceiveDataFromMotor()
     QByteArray data = m_serialMotor->readAll();
     // qDebug()<<"motorreceiveddata"<<data.toHex();
     parseMotorData(data);
-    sleep(1000);
+    // sleep(2000);
     emit sig_sendMotorData();
 }
 
@@ -122,8 +147,9 @@ void SerialPortMotor::SendAgreementContent(QByteArray &serialdata, uint8_t motor
     int8_t lowByteCRC = static_cast<int8_t>(crc & 0xFF);
     serialdata.append(lowByteCRC);
     serialdata.append(highByteCRC);
-    // qDebug()<<"motorsenddata"<<serialdata.toHex();
+    qDebug()<<"motorsenddata"<<serialdata.toHex();
     //发送
+    sleep(2000);
     m_serialMotor->write(serialdata);
     m_serialMotor->flush();
 }
@@ -181,10 +207,8 @@ uint16_t SerialPortMotor::CRC16CCITT(const QByteArray &data)
     for(int j = 0; j < len; ++j) {
         crc ^= static_cast<uint8_t>(data[j]);
         for (int i = 0; i < 8; ++i) {
-            if( (crc & 0x0001) > 0) {
-                //0x1021 翻转  0x8408
-                crc = (crc >> 1) ^ 0x8408;
-            }
+            if( (crc & 0x0001) > 0)
+                crc = (crc >> 1) ^ 0x8408;  //0x1021 翻转  0x8408
             else
                 crc >>= 1;
         }
@@ -240,6 +264,7 @@ void SerialPortMotor::parseMotorData(QByteArray &data)
         QString thetaStr = motorTheta.toHex();
         int32_t thetaValue = thetaStr.toLong(&ok,16);
         float theta = thetaValue / 32768.0 * 2 * M_PI;
+        qDebug()<<"kp"<<m_motorCmd.K_P<<"kw"<<m_motorCmd.K_W<<"deltaPos"<<theta - m_motorData.Pos;
         m_motorData.Pos = theta;
 
         //电机温度1byte
@@ -262,8 +287,28 @@ void SerialPortMotor::parseMotorData(QByteArray &data)
         // qDebug()<<"id"<<motorId<<"status"<<motorStatus<<"tua"<<tua
         //          <<"omega"<<omega<<"theta"<<theta<<"temp"<<temp
         //          <<"error"<<motorError<<"force"<<motorForce;
-        qDebug()<<"pose"<<m_motorData.Pos<<"omega"<<m_motorData.W;
+        // qDebug()<<"pose"<<m_motorData.Pos<<"omega"<<m_motorData.W;
     } else {
+        qDebug()<<"receiveData"<<data.toHex();
         qDebug("The data received is incomplete!!!");
+    }
+}
+
+void SerialPortMotor::sleep(int msec)
+{
+    QTime dieTime = QTime::currentTime().addMSecs(msec);
+    while( QTime::currentTime() < dieTime )
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+}
+
+void SerialPortMotor::run()
+{
+    for(int i = 0; i < 100; ++i) {
+        m_motorCmd.K_P += 0.001;
+        for(int j = 0; j < 100; ++j) {
+            m_motorCmd.K_W += 0.001;
+            emit sig_sendMotorData();
+            sleep(1000);
+        }
     }
 }

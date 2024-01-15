@@ -32,6 +32,7 @@ private:
     SerialPortMotor *m_motorPort;
     SerialPortEMG *m_EMGPort;
 
+    void sleep(int msec);
 
 public slots:
     //robotcontrol

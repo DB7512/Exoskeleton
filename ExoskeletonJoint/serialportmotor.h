@@ -5,6 +5,7 @@
 #include <QSerialPort>
 #include <QTimer>
 #include <QTime>
+#include <QThread>
 
 typedef enum{
     LOCK,           //锁定（Default）
@@ -49,6 +50,8 @@ public:
     QSerialPort *m_serialMotor;
     MotorCmd m_motorCmd;
     MotorData m_motorData;
+    int numi;
+    int numj;
 
 signals:
     void sig_sendMotorData();
@@ -74,6 +77,7 @@ private:
     void parseMotorData(QByteArray& data);
     //延时函数ms
     void sleep(int msec);
+    void run();
 };
 
 #endif // SERIALPORTMOTOR_H
