@@ -11,6 +11,7 @@ CONFIG += c++17
 
 SOURCES += \
     main.cpp \
+    motorcontrol.cpp \
     robotcontrol.cpp \
     serialportemg.cpp \
     serialportencoder.cpp \
@@ -18,6 +19,13 @@ SOURCES += \
     widget.cpp
 
 HEADERS += \
+    include/IOPort/IOPort.h \
+    include/crc/crc_ccitt.h \
+    include/serialPort/SerialPort.h \
+    include/serialPort/include/errorClass.h \
+    include/unitreeMotor/include/motor_msg.h \
+    include/unitreeMotor/unitreeMotor.h \
+    motorcontrol.h \
     robotcontrol.h \
     serialportemg.h \
     serialportencoder.h \
@@ -31,3 +39,10 @@ FORMS += \
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
+
+win32:CONFIG(release, debug|release): LIBS += -L$$PWD/lib/release/ -lUnitreeMotorSDK_M80106_Linux64
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/lib/debug/ -lUnitreeMotorSDK_M80106_Linux64
+else:unix: LIBS += -L$$PWD/lib/ -lUnitreeMotorSDK_M80106_Linux64
+
+INCLUDEPATH += $$PWD/''
+DEPENDPATH += $$PWD/''

@@ -13,7 +13,7 @@ typedef enum{
     CALIBRATION,    //编码器校准
 }MOTORMODE;       //电机工作模式
 
-struct MotorCmd{
+struct mmyMotorCmd{
     uint8_t Id;
     uint8_t Mode;
     float T;
@@ -24,7 +24,7 @@ struct MotorCmd{
     // QString crc;
 };//主机控制协议
 
-struct MotorData{
+struct mmyMotorData{
     uint8_t Id;
     uint8_t Mode;
     float T;
@@ -48,8 +48,8 @@ public:
     bool m_serialMotorStatus;
     //电机串口指针
     QSerialPort *m_serialMotor;
-    MotorCmd m_motorCmd;
-    MotorData m_motorData;
+    mmyMotorCmd m_motorCmd;
+    mmyMotorData m_motorData;
     int numi;
     int numj;
 

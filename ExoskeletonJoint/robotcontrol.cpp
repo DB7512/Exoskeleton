@@ -10,10 +10,12 @@ RobotControl::RobotControl(QObject *parent)
     m_motorStatus = false;
     m_encoderStatus = false;
     m_torqueStatus = false;
-
+    // 电机控制
+    m_motorControl = new MotorControl;
+    // 编码器数据
     m_encoderPort = new SerialPortEncoder;
     connect(m_encoderPort,&SerialPortEncoder::sig_getPositionData,this,&RobotControl::handleEncoderData);
-    m_motorPort = new SerialPortMotor;
+    // sEMGs数据
     m_EMGPort = new SerialPortEMG;
 }
 
@@ -31,7 +33,8 @@ void RobotControl::sleep(int msec)
 
 void RobotControl::startThreadSlot()
 {
-    qDebug("111");
+    // 开启电机线程
+    m_motorControl->start();
     while(!m_isStop) {
         sleep(1000);
     }

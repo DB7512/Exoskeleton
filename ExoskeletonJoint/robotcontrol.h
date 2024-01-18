@@ -8,6 +8,7 @@
 #include "serialportencoder.h"
 #include "serialportmotor.h"
 #include "serialportemg.h"
+#include "motorcontrol.h"
 
 class RobotControl : public QObject
 {
@@ -29,8 +30,8 @@ private:
     QTimer *m_timer;
     // 串口
     SerialPortEncoder *m_encoderPort;
-    SerialPortMotor *m_motorPort;
     SerialPortEMG *m_EMGPort;
+    MotorControl *m_motorControl;
 
     void sleep(int msec);
 
